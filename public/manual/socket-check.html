@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.IO 手动测试</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "PingFang SC", sans-serif;
+        background: #f4f7f3;
+        color: #16202a;
+      }
+      main {
+        width: min(920px, 100%);
+        margin: 0 auto;
+        padding: 18px;
+      }
+      button,
+      input {
+        min-height: 40px;
+        border: 1px solid #b7c2b6;
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+      button {
+        background: #2d6f8f;
+        color: #fff;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      pre {
+        min-height: 300px;
+        overflow: auto;
+        border: 1px solid #d6ded5;
+        border-radius: 8px;
+        background: #fff;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Socket.IO 手动测试</h1>
+      <div class="row">
+        <input id="name" placeholder="名字" value="手动玩家" />
+        <input id="code" placeholder="房间码" />
+        <button id="create">创建房间</button>
+        <button id="join">加入房间</button>
+        <button id="ready">准备/取消</button>
+        <button id="start">开始</button>
+      </div>
+      <pre id="log"></pre>
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const log = document.querySelector('#log');
+      const code = document.querySelector('#code');
+      const name = document.querySelector('#name');
+      let ready = false;
+      function write(label, data) {
+        log.textContent = `${new Date().toLocaleTimeString()} ${label}\n${JSON.stringify(data, null, 2)}\n\n${log.textContent}`;
+      }
+      socket.on('connect', () => write('connect', socket.id));
+      socket.on('state', (state) => {
+        code.value = state.code;
+        write('state', state);
+      });
+      socket.on('session', (session) => write('session', session));
+      socket.on('errorMessage', (message) => write('error', message));
+      document.querySelector('#create').onclick = () => socket.emit('createRoom', { name: name.value }, (reply) => write('create reply', reply));
+      document.querySelector('#join').onclick = () => socket.emit('joinRoom', { code: code.value, name: name.value }, (reply) => write('join reply', reply));
+      document.querySelector('#ready').onclick = () => {
+        ready = !ready;
+        socket.emit('setReady', { ready }, (reply) => write('ready reply', reply));
+      };
+      document.querySelector('#start').onclick = () => socket.emit('startGame', {}, (reply) => write('start reply', reply));
+    </script>
+  </body>
+</html>
