@@ -1,3 +1,4 @@
+{
   "name": "basketball-card-game",
   "version": "0.1.0",
   "private": true,
@@ -8,17 +9,6 @@
     "test": "node --test tests/*.test.js",
     "build": "vite build"
   },
-  "dependencies": {
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-basic-ssl": "^1.1.0",
-    "socket.io-client": "^4.7.5",
-    "vite": "^5.4.2"
-  }
-}
-
   "dependencies": {
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
