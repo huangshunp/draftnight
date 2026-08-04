@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/30683152/README.md)
 # 篮球球星卡公网联机版
 
 这是一个 2-3 人实时联机网页桌游。一个 Node.js 服务同时提供前端网页、静态资源、健康检查接口和 Socket.IO WebSocket 服务。
@@ -53,10 +54,11 @@
 
 ```bash
 npm install
+npm run build
 npm start
 ```
 
-`npm install` 会自动执行前端构建。启动后打开服务输出对应的地址。本地开发也可以使用：
+启动后打开服务输出对应的地址。本地开发也可以使用：
 
 ```bash
 npm run dev
@@ -92,14 +94,14 @@ npm test
 1. 将项目上传到 GitHub。
 2. 在 Render 创建 Web Service。
 3. 连接该 GitHub 仓库。
-4. Build Command 设置为 `npm install`。
+4. Build Command 设置为 `npm install && npm run build`。
 5. Start Command 设置为 `npm start`。
 6. 部署后获得 Render 提供的公开 HTTPS 网址。
 7. 用两个不同网络的设备测试：一台使用手机流量，一台使用另一个地点或另一个 Wi-Fi，打开同一个公开 HTTPS 网址，通过同一个房间码加入。
 
 本项目也提供 `render.yaml`，Render Blueprint 可以直接读取：
 
-- `buildCommand: npm install`
+- `buildCommand: npm install && npm run build`
 - `startCommand: npm start`
 - `healthCheckPath: /health`
 
