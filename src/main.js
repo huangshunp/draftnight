@@ -137,7 +137,10 @@ class GameClient {
         <section class="panel room-panel">
           <div class="room-head">
             <h2>${this.state.code}</h2>
-            <button data-copy="${this.state.code}" title="复制房间码">复制</button>
+            <div class="toolbar">
+              <button data-copy="${this.state.code}" title="复制房间码">复制</button>
+              <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>${this.leaveLabel()}</button>
+            </div>
           </div>
           <p class="muted">把当前公开网址和这个 6 位房间码发给朋友。房间码不是密码。</p>
           <div class="stats">
@@ -196,9 +199,13 @@ class GameClient {
       <div class="toolbar">
         <button data-ready="${!me?.ready}" ${this.pending.has('setReady') ? 'disabled' : ''}>${me?.ready ? '取消准备' : '准备'}</button>
         ${this.state.isHost ? `<button class="primary" data-start ${this.pending.has('startGame') ? 'disabled' : ''}>开始游戏</button>` : ''}
-        <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>${this.state.isHost ? '取消房间' : '离开房间'}</button>
       </div>
     `;
+  }
+
+  leaveLabel() {
+    if (this.state.isHost) return this.state.phase === 'lobby' ? '取消房间' : '退出并关闭房间';
+    return this.state.phase === 'lobby' ? '离开房间' : '退出游戏';
   }
 
   renderDraft() {
@@ -237,7 +244,6 @@ class GameClient {
       </div>
       <div class="toolbar endbar">
         <button class="primary" data-end-turn ${this.pending.has('endTurn') ? 'disabled' : ''}>结束小回合</button>
-        <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>退出房间</button>
       </div>
     `;
   }
@@ -295,7 +301,6 @@ class GameClient {
       <h2>游戏结算</h2>
       <table><thead><tr><th>玩家</th><th>签约分数</th><th>结果</th></tr></thead><tbody>${rows}</tbody></table>
       ${this.state.isHost ? `<button data-restart ${this.pending.has('restart') ? 'disabled' : ''}>重新开始</button>` : ''}
-      <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>${this.state.isHost ? '关闭房间' : '离开房间'}</button>
     `;
   }
 
@@ -314,7 +319,9 @@ class GameClient {
     this.root.querySelector('[data-start]')?.addEventListener('click', () => this.emit('startGame'));
     this.root.querySelector('[data-end-turn]')?.addEventListener('click', () => this.emit('endTurn'));
     this.root.querySelector('[data-restart]')?.addEventListener('click', () => this.emit('restart'));
-    this.root.querySelector('[data-leave-room]')?.addEventListener('click', () => this.emit('leaveRoom'));
+    this.root.querySelectorAll('[data-leave-room]').forEach((button) => {
+      button.addEventListener('click', () => this.emit('leaveRoom'));
+    });
     this.root.querySelectorAll('[data-reveal]').forEach((button) => {
       button.addEventListener('click', () => this.emit('revealDraft', { slotId: button.dataset.reveal }));
     });
