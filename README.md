@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/30683152/README.md)
 # 篮球球星卡公网联机版
 
 这是一个 2-3 人实时联机网页桌游。一个 Node.js 服务同时提供前端网页、静态资源、健康检查接口和 Socket.IO WebSocket 服务。

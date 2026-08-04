@@ -177,3 +177,50 @@ test('public socket rooms enforce network multiplayer rules and private state', 
   assert.equal(restarted.state.discardCount, 0);
   assert.ok(restarted.state.players.every((player) => player.handCount === 0));
 });
+
+test('players can leave lobby seats and host can cancel rooms', async (t) => {
+  rooms.clear();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    for (const socket of io.sockets.sockets.values()) socket.disconnect(true);
+    await new Promise((resolve) => io.close(resolve));
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const host = await connectClient(url);
+  const guest = await connectClient(url);
+  const replacement = await connectClient(url);
+  t.after(() => {
+    host.close();
+    guest.close();
+    replacement.close();
+  });
+
+  let closedMessage;
+  const created = await emit(host, 'createRoom', { name: 'Host' });
+  assert.equal(created.ok, true);
+  const code = created.state.code;
+  assert.equal((await emit(guest, 'joinRoom', { code, name: 'Guest' })).ok, true);
+
+  const left = await emit(guest, 'leaveRoom');
+  assert.equal(left.ok, true);
+  assert.equal(left.left, true);
+  replacement.on('roomClosed', (message) => {
+    closedMessage = message;
+  });
+  assert.equal((await emit(replacement, 'joinRoom', { code, name: 'Replacement' })).ok, true);
+
+  const canceled = await emit(host, 'leaveRoom');
+  assert.equal(canceled.ok, true);
+  assert.equal(canceled.closed, true);
+  assert.equal(rooms.has(code), false);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(closedMessage.roomCode, code);
+
+  const lateJoiner = await connectClient(url);
+  t.after(() => lateJoiner.close());
+  const rejected = await emit(lateJoiner, 'joinRoom', { code, name: 'Late' });
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.error, /房间不存在/);
+});

@@ -90,6 +90,18 @@ function addPlayer(room, name, options = {}) {
   return player;
 }
 
+function removePlayer(room, playerId) {
+  const index = room.players.findIndex((player) => player.id === playerId);
+  if (index < 0) throw new Error('找不到玩家。');
+  if (room.status !== 'lobby') throw new Error('游戏开始后不能退出座位，只能断线等待恢复。');
+  const [removed] = room.players.splice(index, 1);
+  if (room.players.length === 0) return removed;
+  if (room.hostId === removed.id) room.hostId = room.players[0].id;
+  if (room.firstPlayerIndex >= room.players.length) room.firstPlayerIndex = 0;
+  if (room.currentTurnIndex >= room.players.length) room.currentTurnIndex = 0;
+  return removed;
+}
+
 function uniqueName(room, rawName) {
   const base = String(rawName || '玩家').trim().slice(0, 16) || '玩家';
   const existing = new Set(room.players.map((player) => player.name));
@@ -472,6 +484,7 @@ module.exports = {
   buildDeck,
   createRoom,
   addPlayer,
+  removePlayer,
   ensureHost,
   transferHostIfNeeded,
   setReady,

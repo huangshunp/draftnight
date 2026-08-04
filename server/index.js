@@ -98,6 +98,29 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('leaveRoom', (_payload = {}, reply) => {
+    try {
+      const { room, player } = requireSession(socket);
+      if (room.hostId === player.id) {
+        closeRoom(room, '房主已取消房间。');
+        reply?.({ ok: true, closed: true });
+        return;
+      }
+      if (room.status === 'lobby') {
+        engine.removePlayer(room, player.id);
+      } else {
+        player.connected = false;
+      }
+      clearSocketSession(socket, room.code, player.id);
+      bumpVersion(room);
+      emitRoom(room);
+      reply?.({ ok: true, left: true });
+    } catch (error) {
+      emitError(socket, error.message);
+      reply?.({ ok: false, error: error.message });
+    }
+  });
+
   socket.on('resume', ({ roomCode, playerId, playerToken, token } = {}, reply) => {
     try {
       const room = roomByCode(roomCode);
@@ -168,6 +191,24 @@ io.on('connection', (socket) => {
     emitRoom(room);
   });
 });
+
+function closeRoom(room, reason) {
+  const socketIds = Array.from(io.sockets.adapter.rooms.get(room.code) || []);
+  for (const socketId of socketIds) {
+    const roomSocket = io.sockets.sockets.get(socketId);
+    if (!roomSocket) continue;
+    roomSocket.emit('roomClosed', { roomCode: room.code, reason });
+    clearSocketSession(roomSocket, room.code, roomSocket.data.playerId);
+  }
+  rooms.delete(room.code);
+}
+
+function clearSocketSession(socket, roomCode, playerId) {
+  socket.leave(roomCode);
+  if (playerId) socket.leave(playerId);
+  delete socket.data.roomCode;
+  delete socket.data.playerId;
+}
 
 function action(socket, reply, eventName, payload, fn) {
   try {

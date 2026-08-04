@@ -40,6 +40,12 @@ class GameClient {
       this.session = session;
       if (this.persist) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     });
+    this.socket.on('roomClosed', ({ reason } = {}) => {
+      this.clearSession();
+      this.error = reason || '房间已经取消。';
+      this.networkStatus = this.socket.connected ? '已连接' : '连接断开';
+      this.render();
+    });
     this.socket.on('state', (state) => {
       if (this.state && state.stateVersion < this.state.stateVersion) return;
       this.state = state;
@@ -67,6 +73,8 @@ class GameClient {
         if (reply && !reply.ok) {
           this.error = reply.error;
           this.render();
+        } else if (reply?.left || reply?.closed) {
+          this.clearSession();
         } else if (reply?.state && (!this.state || reply.state.stateVersion >= this.state.stateVersion)) {
           this.state = reply.state;
         }
@@ -74,6 +82,12 @@ class GameClient {
         resolve(reply);
       });
     });
+  }
+
+  clearSession() {
+    this.state = null;
+    this.session = null;
+    if (this.persist) localStorage.removeItem(STORAGE_KEY);
   }
 
   render() {
@@ -103,13 +117,13 @@ class GameClient {
       <div class="join-grid">
         <form data-action="create" class="panel">
           <h2>创建房间</h2>
-          <input name="name" maxlength="16" placeholder="你的名字" value="${this.label || ''}" />
+          <input name="name" maxlength="16" placeholder="你的昵称" value="${this.label || ''}" />
           <button class="primary" type="submit" ${this.pending.has('createRoom') ? 'disabled' : ''}>创建</button>
         </form>
         <form data-action="join" class="panel">
           <h2>房间码加入</h2>
-          <input name="name" maxlength="16" placeholder="你的名字" value="${this.label || ''}" />
-          <input name="code" maxlength="6" placeholder="6位房间码" />
+          <input name="name" maxlength="16" placeholder="你的昵称，不是房间名" value="${this.label || ''}" />
+          <input name="code" maxlength="6" placeholder="输入房主给你的6位房间码" />
           <button type="submit" ${this.pending.has('joinRoom') ? 'disabled' : ''}>加入</button>
         </form>
       </div>
@@ -125,6 +139,7 @@ class GameClient {
             <h2>${this.state.code}</h2>
             <button data-copy="${this.state.code}" title="复制房间码">复制</button>
           </div>
+          <p class="muted">把当前公开网址和这个 6 位房间码发给朋友。房间码不是密码。</p>
           <div class="stats">
             <span>牌库 ${this.state.deckCount}</span>
             <span>弃牌 ${this.state.discardCount}</span>
@@ -181,6 +196,7 @@ class GameClient {
       <div class="toolbar">
         <button data-ready="${!me?.ready}" ${this.pending.has('setReady') ? 'disabled' : ''}>${me?.ready ? '取消准备' : '准备'}</button>
         ${this.state.isHost ? `<button class="primary" data-start ${this.pending.has('startGame') ? 'disabled' : ''}>开始游戏</button>` : ''}
+        <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>${this.state.isHost ? '取消房间' : '离开房间'}</button>
       </div>
     `;
   }
@@ -221,6 +237,7 @@ class GameClient {
       </div>
       <div class="toolbar endbar">
         <button class="primary" data-end-turn ${this.pending.has('endTurn') ? 'disabled' : ''}>结束小回合</button>
+        <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>退出房间</button>
       </div>
     `;
   }
@@ -278,6 +295,7 @@ class GameClient {
       <h2>游戏结算</h2>
       <table><thead><tr><th>玩家</th><th>签约分数</th><th>结果</th></tr></thead><tbody>${rows}</tbody></table>
       ${this.state.isHost ? `<button data-restart ${this.pending.has('restart') ? 'disabled' : ''}>重新开始</button>` : ''}
+      <button data-leave-room ${this.pending.has('leaveRoom') ? 'disabled' : ''}>${this.state.isHost ? '关闭房间' : '离开房间'}</button>
     `;
   }
 
@@ -296,6 +314,7 @@ class GameClient {
     this.root.querySelector('[data-start]')?.addEventListener('click', () => this.emit('startGame'));
     this.root.querySelector('[data-end-turn]')?.addEventListener('click', () => this.emit('endTurn'));
     this.root.querySelector('[data-restart]')?.addEventListener('click', () => this.emit('restart'));
+    this.root.querySelector('[data-leave-room]')?.addEventListener('click', () => this.emit('leaveRoom'));
     this.root.querySelectorAll('[data-reveal]').forEach((button) => {
       button.addEventListener('click', () => this.emit('revealDraft', { slotId: button.dataset.reveal }));
     });
@@ -347,7 +366,7 @@ function phaseName(phase) {
 }
 
 function mutatingEvent(event) {
-  return ['setReady', 'startGame', 'revealDraft', 'chooseDraft', 'sign', 'trade', 'poach', 'endTurn', 'restart'].includes(event);
+  return ['setReady', 'startGame', 'revealDraft', 'chooseDraft', 'sign', 'trade', 'poach', 'endTurn', 'restart', 'leaveRoom'].includes(event);
 }
 
 function renderCard(card, size = '') {
